@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" build-on-make="true" name="Picture2Ascii:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/Picture2Ascii_jar</output-path>
+    <root id="archive" name="Picture2Ascii.jar">
+      <element id="module-output" name="Picture2Ascii" />
+    </root>
+  </artifact>
+</component>
