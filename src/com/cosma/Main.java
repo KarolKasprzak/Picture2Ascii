@@ -9,6 +9,6 @@ public class Main {
 
         System.out.println();
         Converter converter = new Converter();
-        System.in.read();
+//        System.in.read();
     }
 }
