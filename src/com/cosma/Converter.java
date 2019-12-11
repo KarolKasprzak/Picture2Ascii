@@ -19,21 +19,11 @@ class Converter {
     private int heightRatio = 10;
     private int widthRatio = 10;
     private ArrayList<AsciiDataAdv> renderArray = new ArrayList<>();
+    private ArrayList<String> characterArray = new ArrayList<>();
+
 
     private String[] characters;
 
-    class AsciiData {
-        int x;
-        int y;
-        int luminance;
-
-        AsciiData(int x, int y, int lu) {
-            this.luminance = lu;
-            this.x = x;
-            this.y = y;
-        }
-
-    }
     class AsciiDataAdv {
         int x;
         int y;
@@ -43,7 +33,7 @@ class Converter {
         int iU = 0;
         int iD = 0;
 
-        AsciiDataAdv(){
+        AsciiDataAdv() {
         }
 
         AsciiDataAdv(int x, int y, int iL, int iR, int iC, int iU, int iD) {
@@ -55,16 +45,39 @@ class Converter {
             this.x = x;
             this.y = y;
         }
+    }
+
+    class CharacterDate extends AsciiDataAdv {
+        String character;
+
+        CharacterDate() {
+        }
+
 
     }
 
-
     Converter() throws IOException {
-
 
         //Find all images
         try (Stream<Path> walk = Files.list(Paths.get(""))) {
-            characters = new String[]{" ", ".", ":", ",", ";", "o", "x", "%", "#", "@"};
+            characterArray.add(" ");
+            characterArray.add(".");
+            characterArray.add(",");
+            characterArray.add(":");
+            characterArray.add("o");
+            characterArray.add("x");
+            characterArray.add("%");
+            characterArray.add("#");
+            characterArray.add("@");
+            characterArray.add("A");
+            characterArray.add("B");
+            characterArray.add("F");
+            characterArray.add("!");
+            characterArray.add("*");
+            characterArray.add("-");
+            characterArray.add("/");
+            characterArray.add(";");
+
             List<String> result = walk.map(x -> x.toString())
                     .filter(f -> f.endsWith(".jpg")).collect(Collectors.toList());
             System.out.println(result.size() + " images found");
@@ -74,62 +87,98 @@ class Converter {
             int currentTotal = 0;
             for (String name : result) {
                 createAsciiImage(name);
-                currentTotal ++;
-                System.out.println("done " + currentTotal+"/"+total);
+                currentTotal++;
+                System.out.println("done " + currentTotal + "/" + total);
             }
             System.out.println("finish");
 
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-
     }
 
-    private void calculateIntensityAndShape(BufferedImage finalImage,int x, int y, int xSize, int ySize){
+
+    private void calculateIntensityAndShape(BufferedImage finalImage, int x, int y, int xSize, int ySize) {
         AsciiDataAdv asciiDataAdv = new AsciiDataAdv();
-        asciiDataAdv.x = x*widthRatio;
-        asciiDataAdv.y = y*heightRatio;
+
+        asciiDataAdv.x = x;
+        asciiDataAdv.y = y;
+
         //calculate left side
-        for(int x1 = asciiDataAdv.x; x1 < asciiDataAdv.x + (xSize*0.33f); x1++){
-            for (int y1 = asciiDataAdv.y; y1 < asciiDataAdv.y + ySize; y1++){
+        int totalPixel = 0;
+        for (int y1 = asciiDataAdv.y; y1 < asciiDataAdv.y + ySize; y1++) {
+            for (int x1 = asciiDataAdv.x; x1 < asciiDataAdv.x + (xSize * 0.33f); x1++) {
+                Color c = new Color(finalImage.getRGB(x1, y1));
+                int luminance = Math.round(c.getRed() * 0.21f + c.getGreen() * 0.71f + c.getBlue() * 0.07f);
+                asciiDataAdv.iL = asciiDataAdv.iL + luminance;
+                totalPixel++;
                 finalImage.setRGB(x1, y1, Color.RED.getRGB());
             }
         }
+        asciiDataAdv.iL = asciiDataAdv.iL / totalPixel;
+
         //calculate right side
-        for(int x1 = asciiDataAdv.x+(Math.round(xSize-xSize*0.33f)); x1 < asciiDataAdv.x + xSize; x1++){
-            for (int y1 = asciiDataAdv.y; y1 < asciiDataAdv.y + ySize; y1++){
-                if(x1 < finalImage.getWidth() ){
-                    finalImage.setRGB(x1, y1, Color.BLUE.getRGB());
-                }
+        totalPixel = 0;
+        for (int y1 = asciiDataAdv.y; y1 < asciiDataAdv.y + ySize; y1++) {
+            for (int x1 = asciiDataAdv.x + (Math.round(xSize - xSize * 0.33f)); x1 < asciiDataAdv.x + xSize; x1++) {
+                Color c = new Color(finalImage.getRGB(x1, y1));
+                int luminance = Math.round(c.getRed() * 0.21f + c.getGreen() * 0.71f + c.getBlue() * 0.07f);
+                asciiDataAdv.iR = asciiDataAdv.iR + luminance;
+                totalPixel++;
+                finalImage.setRGB(x1, y1, Color.YELLOW.getRGB());
             }
         }
+        asciiDataAdv.iR = asciiDataAdv.iR / totalPixel;
+
+        //calculate top side
+
+//        totalPixel = 0;
+//        for (int x1 = asciiDataAdv.x; x1 < asciiDataAdv.x + xSize; x1++) {
+//            for (int y1 = asciiDataAdv.y; y1 < asciiDataAdv.y + (ySize * 0.33f); y1++) {
+//                if(y1 < finalImage.getHeight()-ySize && x1 < finalImage.getWidth()){
+//                    Color c = new Color(finalImage.getRGB(x1, y1));
+//                    int luminance = Math.round(c.getRed() * 0.21f + c.getGreen() * 0.71f + c.getBlue() * 0.07f);
+//                    asciiDataAdv.iU = asciiDataAdv.iU + luminance;
+//                    totalPixel++;
+//                }
+//            }
+//        }
+//        if(totalPixel != 0){
+//            asciiDataAdv.iU = asciiDataAdv.iU / totalPixel;
+//        }
+
         //calculate down side
-        for(int x1 = asciiDataAdv.x; x1 < asciiDataAdv.x + xSize; x1++){
-            for (int y1 = asciiDataAdv.y; y1 < asciiDataAdv.y + (ySize*0.33f); y1++){
-                    finalImage.setRGB(x1, y1, Color.YELLOW.getRGB());
-            }
-        }
 
+//        totalPixel = 0;
+//        for (int x1 = asciiDataAdv.x; x1 < asciiDataAdv.x + xSize; x1++) {
+//            for (int y1 = asciiDataAdv.y + ySize; y1 > asciiDataAdv.y + (ySize * 0.66); y1--) {
+//                if (y1 < finalImage.getHeight() && x1 < finalImage.getWidth()) {
+//                    Color c = new Color(finalImage.getRGB(x1, y1));
+//                    int luminance = Math.round(c.getRed() * 0.21f + c.getGreen() * 0.71f + c.getBlue() * 0.07f);
+//                    asciiDataAdv.iD = asciiDataAdv.iD + luminance;
+//                    totalPixel++;
+//                }
+//            }
+//        }
+//        if(totalPixel != 0){
+//            asciiDataAdv.iD = asciiDataAdv.iD / totalPixel;
+//        }
 
-//        System.out.println("-------------------------------------------------------" );
-        renderArray.add(asciiDataAdv);
+//        renderArray.add(asciiDataAdv);
     }
 
 
     private void createAsciiImage(String imageName) throws IOException {
-
-
 
         File input = new File(imageName);
         BufferedImage image = ImageIO.read(input);
         BufferedImage finalImage = new BufferedImage(
                 image.getWidth(),
                 image.getHeight(),
-                BufferedImage.TYPE_INT_RGB);
+                BufferedImage.TYPE_INT_ARGB);
 
         Graphics2D graphic = finalImage.createGraphics();
-        Font font = new Font("Consolas", Font.PLAIN, 8);
+        Font font = new Font("Consolas", Font.PLAIN, 9);
         FontMetrics metrics = graphic.getFontMetrics(font);
 
 
@@ -137,47 +186,44 @@ class Converter {
         graphic.setColor(Color.GREEN);
 
         graphic.drawImage(image, 0, 0, Color.WHITE, null);
-        ArrayList<AsciiData> asciiArray = new ArrayList<>();
 
-        //Convert to grayscale & collect date to draw
+        //Convert image to grayscale
+        for (int y = 0; y < finalImage.getHeight(); y++) {
+            for (int x = 0; x < finalImage.getWidth(); x++) {
+                int p = finalImage.getRGB(x, y);
 
+                int a = (p >> 24) & 0xff;
+                int r = (p >> 16) & 0xff;
+                int g = (p >> 8) & 0xff;
+                int b = p & 0xff;
 
+                int avg = (r + g + b) / 3;
+                p = (a << 24) | (avg << 16) | (avg << 8) | avg;
+
+                finalImage.setRGB(x, y, p);
+            }
+        }
 
 
         //Calculate average intensity of every rectangular
+        int xSize = Math.round(finalImage.getWidth() / widthRatio);
+        int ySize = Math.round(finalImage.getHeight() / heightRatio);
 
-        for (int i = 0; i < finalImage.getHeight() / heightRatio; i++) {
-            for (int j = 0; j < finalImage.getWidth() / widthRatio; j++) {
+        for (int i = 0; i < finalImage.getHeight(); i += ySize) {
+            for (int j = 0; j < finalImage.getWidth(); j += xSize) {
 
-                int xSize = Math.round(finalImage.getWidth() / widthRatio);
-                int ySize = Math.round(finalImage.getHeight() / heightRatio);
-
-                calculateIntensityAndShape(finalImage,j,i,xSize,ySize);
-
-
-
-
-
-
-                float averageBrightness = 0;
-                int lastX = 0;
-                int lastY = 0;
-                for (int i1 = i * heightRatio; i1 < i * heightRatio + heightRatio; i1++) {
-                    for (int j1 = j * widthRatio; j1 < j * widthRatio + widthRatio; j1++) {
-                        Color c = new Color(finalImage.getRGB(j1, i1));
-//                        float luminance = (c.getRed() * 0.21f + c.getGreen() * 0.71f + c.getBlue() * 0.07f) / 255;
-                        float luminance = (c.getRed() * 0.21f + c.getGreen() * 0.71f + c.getBlue() * 0.07f);
-                        averageBrightness = averageBrightness + luminance;
-                        lastX = j1;
-                        lastY = i1;
-                    }
-                }
-                averageBrightness = averageBrightness / (heightRatio * widthRatio);
-                averageBrightness = round(averageBrightness, 1);
-                AsciiData asciiData = new AsciiData(lastX, lastY, Math.round(averageBrightness));
-                asciiArray.add(asciiData);
+                calculateIntensityAndShape(finalImage, j, i, xSize, ySize);
             }
         }
+
+        //Calculate average intensity of every symbol
+        for (String string : characterArray) {
+//            fillWhite(finalImage);
+            int x = finalImage.getWidth() - xSize;
+            int y = finalImage.getHeight() - ySize;
+            graphic.drawString(string, x, y);
+        }
+        graphic.drawString("asdsdadsa", 0, 0);
 
         //Draw black background
 //        for (int i = 0; i < finalImage.getHeight(); i++) {
@@ -186,55 +232,28 @@ class Converter {
 //            }
 //        }
 
-        //Draw ascii
-        for (AsciiData asciiData : asciiArray) {
-
-            graphic.drawString(characters[Math.round((255-asciiData.luminance)*10/256)],asciiData.x,asciiData.y);
-
-//            graphic.drawString(String.valueOf(asciiData.luminance), asciiData.x, asciiData.y);
-//            if (asciiData.luminance <= 0.2f && asciiData.luminance >= 0.08f) {
-//                graphic.drawString("''", asciiData.x, asciiData.y);
-//                continue;
-//            }
-//            if (asciiData.luminance <= 0.6f && asciiData.luminance >= 0.35f) {
-//                graphic.drawString("j", asciiData.x, asciiData.y);
-//                continue;
-//            }
-//            if (asciiData.luminance <= 0.65f && asciiData.luminance >= 0.6f) {
-//                graphic.drawString("/", asciiData.x, asciiData.y);
-//                continue;
-//            }
-//            if (asciiData.luminance <= 0.75f && asciiData.luminance >= 0.65f) {
-//                graphic.drawString("^", asciiData.x, asciiData.y);
-//                continue;
-//            }
-//            if (asciiData.luminance <= 0.85f && asciiData.luminance >= 0.75f) {
-//                graphic.drawString(";", asciiData.x, asciiData.y);
-//                continue;
-//            }
-//            if (asciiData.luminance <= 0.9f && asciiData.luminance >= 0.85f) {
-//                graphic.drawString(",", asciiData.x, asciiData.y);
-//                continue;
-//            }
-//            if (asciiData.luminance <= 0.97f && asciiData.luminance >= 0.9f) {
-//                graphic.drawString(".", asciiData.x, asciiData.y);
 //
+        File output1 = new File("convert_" + imageName);
+        ImageIO.write(finalImage, "png", output1);
+
+//        if (f.exists()) {
+//            if (f.delete()) {
+//                System.out.println("file exist");
 //            }
+//            File output1 = new File("convert_" + imageName);
+//            ImageIO.write(finalImage, "png", output1);
+//        }
+    }
 
-        }
-
-        File f = new File("convert_" + imageName);
-
-
-        if(f.exists()) {
-            if(f.delete())
-            {
-                System.out.println("file exist");
+    private void fillWhite(BufferedImage finalImage) {
+        for (int i = 0; i < finalImage.getHeight(); i++) {
+            for (int j = 0; j < finalImage.getWidth(); j++) {
+                Color color = new Color(0, 0, 255, 0);
+                finalImage.setRGB(j, i, Color.white.getRGB());
             }
-            File output1 = new File("convert_" + imageName);
-            ImageIO.write(finalImage, "png", output1);
         }
     }
+
 
     private static float round(float d, int decimalPlace) {
         BigDecimal bd = new BigDecimal(Float.toString(d));
