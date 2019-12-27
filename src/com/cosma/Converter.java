@@ -1,30 +1,33 @@
 package com.cosma;
 
+import org.omg.Messaging.SYNC_WITH_TRANSPORT;
+
 import javax.imageio.ImageIO;
 import java.awt.*;
+import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 
 class Converter {
-    private int heightRatio = 10;
-    private int widthRatio = 10;
     private ArrayList<AsciiDataAdv> renderArray = new ArrayList<>();
+    private ArrayList<AsciiDataAdv> characterRenderArray = new ArrayList<>();
     private ArrayList<String> characterArray = new ArrayList<>();
 
 
     private String[] characters;
 
     class AsciiDataAdv {
+        String character;
+        int index;
         int x;
         int y;
         int iL = 0;
@@ -34,16 +37,6 @@ class Converter {
         int iD = 0;
 
         AsciiDataAdv() {
-        }
-
-        AsciiDataAdv(int x, int y, int iL, int iR, int iC, int iU, int iD) {
-            this.iL = iL;
-            this.iR = iR;
-            this.iC = iC;
-            this.iU = iU;
-            this.iD = iD;
-            this.x = x;
-            this.y = y;
         }
     }
 
@@ -77,6 +70,7 @@ class Converter {
             characterArray.add("-");
             characterArray.add("/");
             characterArray.add(";");
+            characterArray.add("B");
 
             List<String> result = walk.map(x -> x.toString())
                     .filter(f -> f.endsWith(".jpg")).collect(Collectors.toList());
@@ -97,77 +91,6 @@ class Converter {
         }
     }
 
-
-    private void calculateIntensityAndShape(BufferedImage finalImage, int x, int y, int xSize, int ySize) {
-        AsciiDataAdv asciiDataAdv = new AsciiDataAdv();
-
-        asciiDataAdv.x = x;
-        asciiDataAdv.y = y;
-
-        //calculate left side
-        int totalPixel = 0;
-        for (int y1 = asciiDataAdv.y; y1 < asciiDataAdv.y + ySize; y1++) {
-            for (int x1 = asciiDataAdv.x; x1 < asciiDataAdv.x + (xSize * 0.33f); x1++) {
-                Color c = new Color(finalImage.getRGB(x1, y1));
-                int luminance = Math.round(c.getRed() * 0.21f + c.getGreen() * 0.71f + c.getBlue() * 0.07f);
-                asciiDataAdv.iL = asciiDataAdv.iL + luminance;
-                totalPixel++;
-                finalImage.setRGB(x1, y1, Color.RED.getRGB());
-            }
-        }
-        asciiDataAdv.iL = asciiDataAdv.iL / totalPixel;
-
-        //calculate right side
-        totalPixel = 0;
-        for (int y1 = asciiDataAdv.y; y1 < asciiDataAdv.y + ySize; y1++) {
-            for (int x1 = asciiDataAdv.x + (Math.round(xSize - xSize * 0.33f)); x1 < asciiDataAdv.x + xSize; x1++) {
-                Color c = new Color(finalImage.getRGB(x1, y1));
-                int luminance = Math.round(c.getRed() * 0.21f + c.getGreen() * 0.71f + c.getBlue() * 0.07f);
-                asciiDataAdv.iR = asciiDataAdv.iR + luminance;
-                totalPixel++;
-                finalImage.setRGB(x1, y1, Color.YELLOW.getRGB());
-            }
-        }
-        asciiDataAdv.iR = asciiDataAdv.iR / totalPixel;
-
-        //calculate top side
-
-//        totalPixel = 0;
-//        for (int x1 = asciiDataAdv.x; x1 < asciiDataAdv.x + xSize; x1++) {
-//            for (int y1 = asciiDataAdv.y; y1 < asciiDataAdv.y + (ySize * 0.33f); y1++) {
-//                if(y1 < finalImage.getHeight()-ySize && x1 < finalImage.getWidth()){
-//                    Color c = new Color(finalImage.getRGB(x1, y1));
-//                    int luminance = Math.round(c.getRed() * 0.21f + c.getGreen() * 0.71f + c.getBlue() * 0.07f);
-//                    asciiDataAdv.iU = asciiDataAdv.iU + luminance;
-//                    totalPixel++;
-//                }
-//            }
-//        }
-//        if(totalPixel != 0){
-//            asciiDataAdv.iU = asciiDataAdv.iU / totalPixel;
-//        }
-
-        //calculate down side
-
-//        totalPixel = 0;
-//        for (int x1 = asciiDataAdv.x; x1 < asciiDataAdv.x + xSize; x1++) {
-//            for (int y1 = asciiDataAdv.y + ySize; y1 > asciiDataAdv.y + (ySize * 0.66); y1--) {
-//                if (y1 < finalImage.getHeight() && x1 < finalImage.getWidth()) {
-//                    Color c = new Color(finalImage.getRGB(x1, y1));
-//                    int luminance = Math.round(c.getRed() * 0.21f + c.getGreen() * 0.71f + c.getBlue() * 0.07f);
-//                    asciiDataAdv.iD = asciiDataAdv.iD + luminance;
-//                    totalPixel++;
-//                }
-//            }
-//        }
-//        if(totalPixel != 0){
-//            asciiDataAdv.iD = asciiDataAdv.iD / totalPixel;
-//        }
-
-//        renderArray.add(asciiDataAdv);
-    }
-
-
     private void createAsciiImage(String imageName) throws IOException {
 
         File input = new File(imageName);
@@ -176,16 +99,17 @@ class Converter {
                 image.getWidth(),
                 image.getHeight(),
                 BufferedImage.TYPE_INT_ARGB);
-
         Graphics2D graphic = finalImage.createGraphics();
-        Font font = new Font("Consolas", Font.PLAIN, 9);
-        FontMetrics metrics = graphic.getFontMetrics(font);
-
-
+        Font font = new Font("Consolas", Font.PLAIN, 16);
         graphic.setFont(font);
         graphic.setColor(Color.GREEN);
-
         graphic.drawImage(image, 0, 0, Color.WHITE, null);
+
+        //Calculate height and width ratio
+        FontMetrics metrics = graphic.getFontMetrics(font);
+        Rectangle2D rect = metrics.getStringBounds("A", graphic);
+        int widthRatio = (int) Math.round(finalImage.getWidth() / metrics.getStringBounds("A", graphic).getWidth());
+        int heightRatio = (int) Math.round((finalImage.getWidth() / metrics.getStringBounds("A", graphic).getHeight()) * 1.6);
 
         //Convert image to grayscale
         for (int y = 0; y < finalImage.getHeight(); y++) {
@@ -204,26 +128,36 @@ class Converter {
             }
         }
 
-
         //Calculate average intensity of every rectangular
         int xSize = Math.round(finalImage.getWidth() / widthRatio);
         int ySize = Math.round(finalImage.getHeight() / heightRatio);
 
         for (int i = 0; i < finalImage.getHeight(); i += ySize) {
             for (int j = 0; j < finalImage.getWidth(); j += xSize) {
-
-                calculateIntensityAndShape(finalImage, j, i, xSize, ySize);
+                if (i + ySize < finalImage.getHeight() && j + xSize < finalImage.getWidth()) {
+                    calculateIntensityOfRectangle(finalImage, j, i, xSize, ySize,false,"",0);
+                }
             }
         }
 
         //Calculate average intensity of every symbol
+        int index = 0;
         for (String string : characterArray) {
-//            fillWhite(finalImage);
-            int x = finalImage.getWidth() - xSize;
-            int y = finalImage.getHeight() - ySize;
-            graphic.drawString(string, x, y);
+            fillWhite(finalImage);
+            index ++;
+            int x = finalImage.getWidth()-100;
+            int y = finalImage.getHeight()-100;
+            graphic.drawString(string, x, y+ySize);
+            calculateIntensityOfRectangle(finalImage, x, y, xSize, ySize,true,string,index);
+            fillWhite(finalImage);
         }
-        graphic.drawString("asdsdadsa", 0, 0);
+
+        //Draw string
+        for(AsciiDataAdv asciiDataAdv: renderArray){
+            findClosestCharacter(asciiDataAdv,graphic);
+        }
+
+
 
         //Draw black background
 //        for (int i = 0; i < finalImage.getHeight(); i++) {
@@ -245,6 +179,135 @@ class Converter {
 //        }
     }
 
+    private int test(int l1, int l2){
+        int x = Math.abs(l1 - l2);
+        if(x == 0){
+            return 10;
+        }
+        if(x > 0 && x < 10){
+            return 9;
+        }
+        if(x > 10 && x < 20){
+            return 8;
+        }
+        if(x > 20 && x < 30){
+            return 7;
+        }
+        if(x > 30 && x < 40){
+            return 6;
+        }
+        if(x > 40 && x < 55){
+            return 5;
+        }
+        if(x > 55 && x < 70){
+            return 4;
+        }
+        if(x > 70 && x < 90){
+            return 3;
+        }
+        if(x > 90 && x < 130){
+            return 2;
+        }
+        if(x >130 && x < 160){
+            return 1;
+        }
+
+        return 0;
+    }
+
+
+    private void findClosestCharacter(AsciiDataAdv asciiDataAdv,Graphics2D graphic){
+
+
+        HashMap<Integer,String> map = new HashMap<Integer,String>();
+        System.out.println("-------------------------------------------------");
+        for(AsciiDataAdv characters: characterRenderArray){
+            int totalPoint = 0;
+            totalPoint += test(asciiDataAdv.iL,characters.iL);
+            totalPoint += test(asciiDataAdv.iR,characters.iR);
+            totalPoint += test(asciiDataAdv.iU,characters.iU);
+            totalPoint += test(asciiDataAdv.iD,characters.iD);
+            map.put(totalPoint,characters.character);
+            System.out.println(totalPoint);
+        }
+
+
+        System.out.println("-------------------------------------------------");
+
+        TreeMap<Integer, String> treeMap = new TreeMap<Integer, String>(map);
+        System.out.println(treeMap.lastEntry());
+        graphic.drawString(treeMap.lastEntry().getValue(),asciiDataAdv.x,asciiDataAdv.y);
+    }
+
+    private void calculateIntensityOfRectangle(BufferedImage finalImage, int x, int y, int xSize, int ySize,boolean calculateCharacter, String string,int index) {
+        AsciiDataAdv asciiDataAdv = new AsciiDataAdv();
+
+        asciiDataAdv.x = x;
+        asciiDataAdv.y = y;
+        asciiDataAdv.index = index;
+
+        //calculate left side
+        int totalPixel = 0;
+        for (int y1 = asciiDataAdv.y; y1 < asciiDataAdv.y + ySize; y1++) {
+            for (int x1 = asciiDataAdv.x; x1 < asciiDataAdv.x + (xSize * 0.33f); x1++) {
+                Color c = new Color(finalImage.getRGB(x1, y1));
+                int luminance = Math.round(c.getRed() * 0.21f + c.getGreen() * 0.71f + c.getBlue() * 0.07f);
+                asciiDataAdv.iL = asciiDataAdv.iL + luminance;
+                totalPixel++;
+            }
+        }
+        asciiDataAdv.iL = asciiDataAdv.iL / totalPixel;
+
+        //calculate right side
+        totalPixel = 0;
+        for (int y1 = asciiDataAdv.y; y1 < asciiDataAdv.y + ySize; y1++) {
+            for (int x1 = asciiDataAdv.x + (Math.round(xSize - xSize * 0.33f)); x1 < asciiDataAdv.x + xSize; x1++) {
+                Color c = new Color(finalImage.getRGB(x1, y1));
+                int luminance = Math.round(c.getRed() * 0.21f + c.getGreen() * 0.71f + c.getBlue() * 0.07f);
+                asciiDataAdv.iR = asciiDataAdv.iR + luminance;
+                totalPixel++;
+            }
+        }
+        asciiDataAdv.iR = asciiDataAdv.iR / totalPixel;
+
+        //calculate up side
+
+        totalPixel = 0;
+        for (int x1 = asciiDataAdv.x; x1 < asciiDataAdv.x + xSize; x1++) {
+            for (int y1 = asciiDataAdv.y; y1 < asciiDataAdv.y + (ySize * 0.33f); y1++) {
+                Color c = new Color(finalImage.getRGB(x1, y1));
+                int luminance = Math.round(c.getRed() * 0.21f + c.getGreen() * 0.71f + c.getBlue() * 0.07f);
+                asciiDataAdv.iU = asciiDataAdv.iU + luminance;
+                totalPixel++;
+            }
+        }
+        asciiDataAdv.iU = asciiDataAdv.iU / totalPixel;
+
+        //calculate down side
+
+        totalPixel = 0;
+        for (int x1 = asciiDataAdv.x; x1 < asciiDataAdv.x + xSize; x1++) {
+            for (int y1 = asciiDataAdv.y + ySize; y1 > asciiDataAdv.y + (ySize * 0.66); y1--) {
+                    Color c = new Color(finalImage.getRGB(x1, y1));
+                    int luminance = Math.round(c.getRed() * 0.21f + c.getGreen() * 0.71f + c.getBlue() * 0.07f);
+                    asciiDataAdv.iD = asciiDataAdv.iD + luminance;
+                    totalPixel++;
+            }
+        }
+        if(totalPixel != 0){
+            asciiDataAdv.iD = asciiDataAdv.iD / totalPixel;
+        }
+        if(!calculateCharacter){
+            renderArray.add(asciiDataAdv);
+        }else{
+            asciiDataAdv.character = string;
+            characterRenderArray.add(asciiDataAdv);
+        }
+
+
+    }
+
+
     private void fillWhite(BufferedImage finalImage) {
         for (int i = 0; i < finalImage.getHeight(); i++) {
             for (int j = 0; j < finalImage.getWidth(); j++) {
@@ -252,12 +315,5 @@ class Converter {
                 finalImage.setRGB(j, i, Color.white.getRGB());
             }
         }
-    }
-
-
-    private static float round(float d, int decimalPlace) {
-        BigDecimal bd = new BigDecimal(Float.toString(d));
-        bd = bd.setScale(decimalPlace, BigDecimal.ROUND_HALF_UP);
-        return bd.floatValue();
     }
 }
